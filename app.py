@@ -10,6 +10,7 @@ from sqlalchemy import create_engine, func
 
 # 2. Import Flask
 from flask import Flask, jsonify
+from sqlalchemy.sql.expression import null
 
 # 3. Setup Database
 # Create engine to hawaii.sqlite
@@ -63,8 +64,9 @@ def precip():
         for date in results:
             if date[0] == prdate:
                 precdict[str(prdate)].append(date[1])
+    precdicts = {"Measurements" : precdict}
     # Return JSON of dictionary
-    return jsonify(precdict)
+    return jsonify(precdicts)
 
     # Stations Route
     # Return a JSON list of stations from the dataset.
@@ -80,14 +82,15 @@ def stats():
     statnames = []
     for result in results:
         statnames.append(result[0])
+    statdict = {"Station Names" : statnames}
     # Return JSON of dictionary
-    return jsonify(statnames)
+    return jsonify(statdict)
 
     # Temperature Route
     # Query the dates and temperature observations of the most active station for the last year of data.
 @app.route("/api/v1.0/tobs")
 def temps():
-    # Create session and query
+    # Create session
     session = Session(engine)
     # Design a query to find the most active station
     actstation = session.query(measurements.station,stations.id,func.count(measurements.station)).\
@@ -130,14 +133,65 @@ def temps():
     return jsonify(tempdics)
 
     # Start Route
+    #  Calculate TMIN, TAVG, and TMAX for all dates greater than and equal to the start date.
 @app.route("/api/v1.0/<start>")
-def stroute(start):
-    return
+def start_date(start):
+    #Create session and start query
+    session = Session(engine)
+    stdate = dt.strptime(start, '%Y-%m-%d')
+    datestats = session.query(measurements.date,func.avg(measurements.tobs),
+                func.max(measurements.tobs),func.min(measurements.tobs)).\
+                filter(measurements.date >= stdate.strftime('%Y-%m-%d')).\
+                group_by(measurements.date).all()
+    session.close()
+    # Get measurements as dictionaries
+    vals = []
+    startdates = []
+    for date in datestats:
+        startdates.append(date[0])
+        vals.append({'Average Temperature': round(int(date[1]),4),
+        'Max Temperature': round(int(date[2]),4),
+        'Min Temperature': round(int(date[3]),4)})
+    startdict = dict.fromkeys(startdates,0)
+    counter = 0
+    for date in startdates:
+        startdict[str(date)] = vals[counter]
+        counter = counter + 1
+    return jsonify(startdict)
 
     # Start/End Route
 @app.route("/api/v1.0/<start>/<end>")
 def stenroute(start,end):
-    return
+    #Create session and start query
+    session = Session(engine)
+    stdate = dt.strptime(start, '%Y-%m-%d')
+    nddate = dt.strptime(end, '%Y-%m-%d')
+    # Run query
+    datestats = session.query(measurements.date,func.avg(measurements.tobs),
+                func.max(measurements.tobs),func.min(measurements.tobs)).\
+                filter(measurements.date >= stdate.strftime('%Y-%m-%d')).\
+                filter(measurements.date <= nddate.strftime('%Y-%m-%d')).\
+                group_by(measurements.date).all()
+    session.close()
+    # Get measurements as dictionaries
+    vals = []
+    startdates = []
+    for date in datestats:
+        startdates.append(date[0])
+        vals.append({'Average Temperature': round(int(date[1]),4),
+        'Max Temperature': round(int(date[2]),4),
+        'Min Temperature': round(int(date[3]),4)})
+    # Error message if second date is before the first date
+    if len(startdates) < 1:
+        startdict = "Error! Choose two valid dates."
+    # Build dictionary
+    else:
+        startdict = dict.fromkeys(startdates,0)
+        counter = 0
+        for date in startdates:
+            startdict[str(date)] = vals[counter]
+            counter = counter + 1
+    return jsonify(startdict)
 
 if __name__ == '__main__':
     app.run(debug=True)
