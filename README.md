@@ -37,4 +37,4 @@ Temperatures stayed pretty constant between the days, considering the maximum, t
 
 **Conclusions**
 
-All in all, I think I feel ready for my trip, now that I have climate information available both in the analysis I performed using pandas and in the simple yet effective API I created.
+All in all, I think I was 100% ready for my trip, more when I have all of this climate information available both in the analysis I performed using pandas and in the simple yet effective API I created. My anxious self won't need to worry about having bad weather in my vacations anymore.
